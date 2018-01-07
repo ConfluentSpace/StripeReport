@@ -1,0 +1,17 @@
+This script requires the following:
+
+config.json (same directory as script):
+{
+    "woocommerce": {
+        "url": "https://your-domain.here",
+        "consumer_key": "ck_XXXXX",
+        "consumer_secret": "cs_XXXXX"
+    },
+    "stripe": {
+        "secret_key": "sk_live_XXXXX"
+    }
+}
+
+These libraries:
+- WooCommerce wc/v2
+- Stripe
