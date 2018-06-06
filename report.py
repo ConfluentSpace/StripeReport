@@ -90,6 +90,7 @@ tallies["other"] = 0
 tallies["bold"] = 0
 tallies["basic"] = 0
 tallies["business"] = 0
+tallies["partnership"] = 0
 tallies["twenfoursev"] = 0
 
 arrears = dict()
@@ -111,20 +112,21 @@ def print_tallies(month, lastTallies, tallies, arrears, preliminary=False):
     if preliminary:
         month += " (Preliminary)"
     print("*" + month + ":*")
-    print("Memberships: $" + leftpad(Decimal(tallies["memberships"] - lastTallies["memberships"]) / 100))
-    print("(Basic $25): $" + leftpad(Decimal(tallies["bold"] - lastTallies["bold"]) / 100))
-    print("(Basic $35): $" + leftpad(Decimal(tallies["basic"] - lastTallies["basic"]) / 100))
-    print(" (Business): $" + leftpad(Decimal(tallies["business"] - lastTallies["business"]) / 100))
-    print("     (24/7): $" + leftpad(Decimal(tallies["twenfoursev"] - lastTallies["twenfoursev"]) / 100))
+    print("  Memberships: $" + leftpad(Decimal(tallies["memberships"] - lastTallies["memberships"]) / 100))
+    print("  (Basic $25): $" + leftpad(Decimal(tallies["bold"] - lastTallies["bold"]) / 100))
+    print("  (Basic $35): $" + leftpad(Decimal(tallies["basic"] - lastTallies["basic"]) / 100))
+    print("(Partnership): $" + leftpad(Decimal(tallies["partnership"] - lastTallies["partnership"]) / 100))
+    print("   (Business): $" + leftpad(Decimal(tallies["business"] - lastTallies["business"]) / 100))
+    print("       (24/7): $" + leftpad(Decimal(tallies["twenfoursev"] - lastTallies["twenfoursev"]) / 100))
     if tallies["other"] - lastTallies["other"] > 0:
-        print("  (Unknown): $" + leftpad(Decimal(tallies["other"] - lastTallies["other"]) / 100))
-    print("  Donations: $" + leftpad(Decimal(tallies["donations"] - lastTallies["donations"]) / 100))
-    print("    Classes: $" + leftpad(Decimal(tallies["classes"] - lastTallies["classes"]) / 100))
-    print("Misc Retail: $" + leftpad(Decimal(tallies["retail"] - lastTallies["retail"]) / 100))
+        print("    (Unknown): $" + leftpad(Decimal(tallies["other"] - lastTallies["other"]) / 100))
+    print("    Donations: $" + leftpad(Decimal(tallies["donations"] - lastTallies["donations"]) / 100))
+    print("      Classes: $" + leftpad(Decimal(tallies["classes"] - lastTallies["classes"]) / 100))
+    print("  Misc Retail: $" + leftpad(Decimal(tallies["retail"] - lastTallies["retail"]) / 100))
     if tallies["unknown"] - lastTallies["unknown"] > 0:
-        print("    Unknown: $" + leftpad(Decimal(tallies["unknown"] - lastTallies["unknown"]) / 100))
-    print("      Total: $" + leftpad(Decimal(tallies["total"] - lastTallies["total"]) / 100))
-    print("       Fees: $" + leftpad((tallies["fees"] - lastTallies["fees"]) / 100))
+        print("      Unknown: $" + leftpad(Decimal(tallies["unknown"] - lastTallies["unknown"]) / 100))
+    print("        Total: $" + leftpad(Decimal(tallies["total"] - lastTallies["total"]) / 100))
+    print("         Fees: $" + leftpad((tallies["fees"] - lastTallies["fees"]) / 100))
 
     if len(arrears) > 0:
         print("")
@@ -145,6 +147,37 @@ def tallyfee (tallies, amount):
         fee = fee.quantize(1, rounding=ROUND_DOWN)
     tallies["fees"] += fee
 
+def nonMembershipCharge (charge):
+    refunded = charge["amount_refunded"] > 0
+    descr = charge["description"]
+    match = re.search("Confluent - Order (\d+)", descr)
+    if match and int(match.group(1)) in cache:
+        entry = cache[int(match.group(1))]
+        products = entry["line_items"]
+        for product in range(0, len(products)):
+            price = products[product]["price"] * products[product]["quantity"] * 100 # it's in $ not cents
+            id = products[product]["product_id"]
+            if id == 669: # Donation
+                tallies["donations"] += price
+            elif id == 1239: # Firing fee
+                tallies["retail"] += price
+            else:
+                if refunded:
+                    refund = charge["amount_refunded"]
+                    price = price - refund
+                    refunded = False
+                tallies["classes"] += price
+        tallies["total"] += price
+        tallyfee(tallies, Decimal(int(float(entry["total"])) * 100))
+    else:
+        amount = charge["amount"]
+        print(charge["description"] + ", " + str(amount));
+        refund = charge["amount_refunded"]
+        tallyfee(tallies, Decimal(amount))
+        amount = amount - refund
+        tallies["unknown"] += amount
+        tallies["total"] += amount
+
 for item in range(len(charges) - 1, -1, -1):
     charge = charges[item]
     created = datetime.utcfromtimestamp(charge["created"])
@@ -158,7 +191,6 @@ for item in range(len(charges) - 1, -1, -1):
         tdate = created
         lastTallies = tallies.copy()
         lastTallies["fees"] = Decimal(lastTallies["fees"])
-        #arrears = dict()
     if charge["customer"]:
         if charge["failure_code"]:
             if not charge["receipt_email"] in arrears:
@@ -177,6 +209,8 @@ for item in range(len(charges) - 1, -1, -1):
                 tallies["twenfoursev"] += net
             elif membership % 6500 == 0:
                 tallies["business"] += net
+            elif membership % 5000 == 0:
+                tallies["partnership"] += net
             elif membership % 3500 == 0:
                 tallies["basic"] += net
             elif membership % 2500 == 0:
@@ -186,40 +220,13 @@ for item in range(len(charges) - 1, -1, -1):
                 tallies["basic"] += 3500
                 tallies["other"] += 505
             else:
-                tallies["other"] += net
+                nonMembershipCharge(charge)
+                continue
             tallyfee(tallies, Decimal(membership))
             tallies["memberships"] += membership
             tallies["total"] += net
     else:
-        refunded = charge["amount_refunded"] > 0
-        descr = charge["description"]
-        match = re.search("Confluent - Order (\d+)", descr)
-        if match and int(match.group(1)) in cache:
-            entry = cache[int(match.group(1))]
-            products = entry["line_items"]
-            for product in range(0, len(products)):
-                price = products[product]["price"] * products[product]["quantity"] * 100 # it's in $ not cents
-                id = products[product]["product_id"]
-                if id == 669: # Donation
-                    tallies["donations"] += price
-                elif id == 1239: # Firing fee
-                    tallies["retail"] += price
-                else:
-                    if refunded:
-                        refund = charge["amount_refunded"]
-                        price = price - refund
-                        refunded = False
-                    tallies["classes"] += price
-            tallies["total"] += price
-            tallyfee(tallies, Decimal(int(float(entry["total"])) * 100))
-        else:
-            amount = charge["amount"]
-            print(charge["description"] + ", " + str(amount));
-            refund = charge["amount_refunded"]
-            tallyfee(tallies, Decimal(amount))
-            amount = amount - refund
-            tallies["unknown"] += amount
-            tallies["total"] += amount
+        nonMembershipCharge(charge)
 
 print_tallies(tdate.strftime("%B"), lastTallies, tallies, arrears, preliminary)
 if not single_month:
