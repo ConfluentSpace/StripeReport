@@ -191,11 +191,17 @@ for item in range(len(charges) - 1, -1, -1):
         tdate = created
         lastTallies = tallies.copy()
         lastTallies["fees"] = Decimal(lastTallies["fees"])
+    descr = charge["description"]
+    match = None
+    if descr:
+        match = re.search("Confluent - Order (\d+)", descr)
     if charge["customer"]:
         if charge["failure_code"]:
             if not charge["receipt_email"] in arrears:
                 arrears[charge["receipt_email"]] = OrderedDict()
             arrears[charge["receipt_email"]][month] = day
+        elif match and int(match.group(1)) in cache:
+            nonMembershipCharge(charge)
         else:
             # They paid later in the month to make up for the failed charge
             if charge["receipt_email"] in arrears and month in arrears[charge["receipt_email"]] and arrears[charge["receipt_email"]][month] <= day:
@@ -220,8 +226,7 @@ for item in range(len(charges) - 1, -1, -1):
                 tallies["basic"] += 3500
                 tallies["other"] += 505
             else:
-                nonMembershipCharge(charge)
-                continue
+                tallies["other"] += net
             tallyfee(tallies, Decimal(membership))
             tallies["memberships"] += membership
             tallies["total"] += net
