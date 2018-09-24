@@ -89,9 +89,11 @@ tallies["fees"] = 0
 tallies["other"] = 0
 tallies["bold"] = 0
 tallies["basic"] = 0
+tallies["basicprorate"] = 0
 tallies["business"] = 0
 tallies["partnership"] = 0
 tallies["twenfoursev"] = 0
+tallies["twenfoursevprorate"] = 0
 
 arrears = dict()
 
@@ -112,21 +114,25 @@ def print_tallies(month, lastTallies, tallies, arrears, preliminary=False):
     if preliminary:
         month += " (Preliminary)"
     print("*" + month + ":*")
-    print("  Memberships: $" + leftpad(Decimal(tallies["memberships"] - lastTallies["memberships"]) / 100))
-    print("  (Basic $25): $" + leftpad(Decimal(tallies["bold"] - lastTallies["bold"]) / 100))
-    print("  (Basic $35): $" + leftpad(Decimal(tallies["basic"] - lastTallies["basic"]) / 100))
-    print("(Partnership): $" + leftpad(Decimal(tallies["partnership"] - lastTallies["partnership"]) / 100))
-    print("   (Business): $" + leftpad(Decimal(tallies["business"] - lastTallies["business"]) / 100))
-    print("       (24/7): $" + leftpad(Decimal(tallies["twenfoursev"] - lastTallies["twenfoursev"]) / 100))
+    print("     Memberships: $" + leftpad(Decimal(tallies["memberships"] - lastTallies["memberships"]) / 100))
+    print("     (Basic $25): $" + leftpad(Decimal(tallies["bold"] - lastTallies["bold"]) / 100))
+    print("     (Basic $35): $" + leftpad(Decimal(tallies["basic"] - lastTallies["basic"]) / 100))
+    if tallies["basicprorate"] - lastTallies["basicprorate"] > 0:
+        print("(Basic Protated): $" + leftpad(Decimal(tallies["basicprorate"] - lastTallies["basicprorate"]) / 100))
+    print("   (Partnership): $" + leftpad(Decimal(tallies["partnership"] - lastTallies["partnership"]) / 100))
+    print("      (Business): $" + leftpad(Decimal(tallies["business"] - lastTallies["business"]) / 100))
+    print("          (24/7): $" + leftpad(Decimal(tallies["twenfoursev"] - lastTallies["twenfoursev"]) / 100))
+    if tallies["twenfoursevprorate"] - lastTallies["twenfoursevprorate"] > 0:
+        print(" (24/7 Prorated): $" + leftpad(Decimal(tallies["twenfoursevprorate"] - lastTallies["twenfoursevprorate"]) / 100))
     if tallies["other"] - lastTallies["other"] > 0:
-        print("    (Unknown): $" + leftpad(Decimal(tallies["other"] - lastTallies["other"]) / 100))
-    print("    Donations: $" + leftpad(Decimal(tallies["donations"] - lastTallies["donations"]) / 100))
-    print("      Classes: $" + leftpad(Decimal(tallies["classes"] - lastTallies["classes"]) / 100))
-    print("  Misc Retail: $" + leftpad(Decimal(tallies["retail"] - lastTallies["retail"]) / 100))
+        print("       (Unknown): $" + leftpad(Decimal(tallies["other"] - lastTallies["other"]) / 100))
+    print("       Donations: $" + leftpad(Decimal(tallies["donations"] - lastTallies["donations"]) / 100))
+    print("         Classes: $" + leftpad(Decimal(tallies["classes"] - lastTallies["classes"]) / 100))
+    print("     Misc Retail: $" + leftpad(Decimal(tallies["retail"] - lastTallies["retail"]) / 100))
     if tallies["unknown"] - lastTallies["unknown"] > 0:
-        print("      Unknown: $" + leftpad(Decimal(tallies["unknown"] - lastTallies["unknown"]) / 100))
-    print("        Total: $" + leftpad(Decimal(tallies["total"] - lastTallies["total"]) / 100))
-    print("         Fees: $" + leftpad((tallies["fees"] - lastTallies["fees"]) / 100))
+        print("         Unknown: $" + leftpad(Decimal(tallies["unknown"] - lastTallies["unknown"]) / 100))
+    print("           Total: $" + leftpad(Decimal(tallies["total"] - lastTallies["total"]) / 100))
+    print("            Fees: $" + leftpad((tallies["fees"] - lastTallies["fees"]) / 100))
 
     if len(arrears) > 0:
         print("")
@@ -224,7 +230,11 @@ for item in range(len(charges) - 1, -1, -1):
             # 2017-10-02 / Kimberly membership change Stripe proration fail ($5.05 proration "fee")
             elif membership == 4005:
                 tallies["basic"] += 3500
-                tallies["other"] += 505
+                tallies["basicprorate"] += 505
+            # 2018-09-23 / Member granted temporary 24/7 with proration
+            elif membership == 12120:
+                tallies["twenfoursev"] += 10000
+                tallies["twenfoursevprorate"] += 2120
             else:
                 tallies["other"] += net
             tallyfee(tallies, Decimal(membership))
