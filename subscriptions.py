@@ -26,9 +26,12 @@ for customer in customers.auto_paging_iter():
     else:
         if len(customer['subscriptions']['data']):
             plan = customer['subscriptions']['data'][0]['items']['data'][0]['plan']
-            if not plan['name'] in active:
-                active[plan['name']] = []
-            active[plan['name']].append(customer)
+            name = plan['name'] if 'name' in plan else plan['nickname']
+            if name is None:
+                print(plan['id'])
+            if not name in active:
+                active[name] = []
+            active[name].append(customer)
         else:
             inactive.append(customer)
 print('Fetched subscriptions from Stripe')
