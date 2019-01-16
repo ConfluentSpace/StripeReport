@@ -85,6 +85,7 @@ tallies["retail"] = 0
 tallies["unknown"] = 0
 tallies["total"] = 0
 tallies["fees"] = 0
+tallies["refunds"] = 0
 
 tallies["other"] = 0
 tallies["bold"] = 0
@@ -92,6 +93,7 @@ tallies["basic"] = 0
 tallies["basicprorate"] = 0
 tallies["business"] = 0
 tallies["partnership"] = 0
+tallies["extended"] = 0
 tallies["twenfoursev"] = 0
 tallies["twenfoursevprorate"] = 0
 
@@ -121,6 +123,7 @@ def print_tallies(month, lastTallies, tallies, arrears, preliminary=False):
         print("(Basic Protated): $" + leftpad(Decimal(tallies["basicprorate"] - lastTallies["basicprorate"]) / 100))
     print("   (Partnership): $" + leftpad(Decimal(tallies["partnership"] - lastTallies["partnership"]) / 100))
     print("      (Business): $" + leftpad(Decimal(tallies["business"] - lastTallies["business"]) / 100))
+    print("      (Extended): $" + leftpad(Decimal(tallies["extended"] - lastTallies["extended"]) / 100))
     print("          (24/7): $" + leftpad(Decimal(tallies["twenfoursev"] - lastTallies["twenfoursev"]) / 100))
     if tallies["twenfoursevprorate"] - lastTallies["twenfoursevprorate"] > 0:
         print(" (24/7 Prorated): $" + leftpad(Decimal(tallies["twenfoursevprorate"] - lastTallies["twenfoursevprorate"]) / 100))
@@ -133,6 +136,7 @@ def print_tallies(month, lastTallies, tallies, arrears, preliminary=False):
         print("         Unknown: $" + leftpad(Decimal(tallies["unknown"] - lastTallies["unknown"]) / 100))
     print("           Total: $" + leftpad(Decimal(tallies["total"] - lastTallies["total"]) / 100))
     print("            Fees: $" + leftpad((tallies["fees"] - lastTallies["fees"]) / 100))
+    print("         Refunds: $" + leftpad(Decimal(tallies["refunds"] - lastTallies["refunds"]) / 100))
 
     if len(arrears) > 0:
         print("")
@@ -154,12 +158,18 @@ def tallyfee (tallies, amount):
     tallies["fees"] += fee
 
 def nonMembershipCharge (charge):
-    refunded = charge["amount_refunded"] > 0
+    refunded = charge["refunded"]
     descr = charge["description"]
     match = re.search("Confluent - Order (\d+)", descr)
     if match and int(match.group(1)) in cache:
         entry = cache[int(match.group(1))]
         products = entry["line_items"]
+        amount = charge["amount"]
+        if refunded:
+            if charge["refunded"]:
+                refund = sum(r["amount"] for r in charge["refunds"]["data"])
+            amount = amount - refund
+            tallies["refunds"] += refund
         for product in range(0, len(products)):
             price = products[product]["price"] * products[product]["quantity"] * 100 # it's in $ not cents
             id = products[product]["product_id"]
@@ -168,16 +178,11 @@ def nonMembershipCharge (charge):
             elif id == 1239: # Firing fee
                 tallies["retail"] += price
             else:
-                if refunded:
-                    refund = charge["amount_refunded"]
-                    price = price - refund
-                    refunded = False
                 tallies["classes"] += price
-        tallies["total"] += price
+        tallies["total"] += amount
         tallyfee(tallies, Decimal(int(float(entry["total"])) * 100))
     else:
         amount = charge["amount"]
-        print(charge["description"] + ", " + str(amount));
         refund = charge["amount_refunded"]
         tallyfee(tallies, Decimal(amount))
         amount = amount - refund
@@ -197,17 +202,19 @@ for item in range(len(charges) - 1, -1, -1):
         tdate = created
         lastTallies = tallies.copy()
         lastTallies["fees"] = Decimal(lastTallies["fees"])
+    if charge["status"] == "failed":
+        continue
     descr = charge["description"]
     match = None
     if descr:
         match = re.search("Confluent - Order (\d+)", descr)
     if charge["customer"]:
-        if charge["failure_code"]:
+        if match and int(match.group(1)) in cache:
+            nonMembershipCharge(charge)
+        elif charge["failure_code"]:
             if not charge["receipt_email"] in arrears:
                 arrears[charge["receipt_email"]] = OrderedDict()
             arrears[charge["receipt_email"]][month] = day
-        elif match and int(match.group(1)) in cache:
-            nonMembershipCharge(charge)
         else:
             # They paid later in the month to make up for the failed charge
             if charge["receipt_email"] in arrears and month in arrears[charge["receipt_email"]] and arrears[charge["receipt_email"]][month] <= day:
@@ -215,10 +222,14 @@ for item in range(len(charges) - 1, -1, -1):
                 if len(arrears[charge["receipt_email"]]) == 0:
                     del arrears[charge["receipt_email"]]
             membership = charge["amount"]
-            refund = charge["amount_refunded"]
+            refund = 0
+            if charge["refunded"]:
+                refund = sum(r['amount'] for r in charge['refunds']['data'])
             net = membership - refund
             if membership % 10000 == 0:
                 tallies["twenfoursev"] += net
+            if membership % 7500 == 0 or membership % 6375 == 0:
+                tallies["extended"] += net
             elif membership % 6500 == 0:
                 tallies["business"] += net
             elif membership % 5000 == 0:
@@ -238,6 +249,7 @@ for item in range(len(charges) - 1, -1, -1):
             else:
                 tallies["other"] += net
             tallyfee(tallies, Decimal(membership))
+            tallies["refunds"] += refund
             tallies["memberships"] += membership
             tallies["total"] += net
     else:
