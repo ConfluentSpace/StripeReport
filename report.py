@@ -81,6 +81,7 @@ tallies = {}
 tallies["memberships"] = 0
 tallies["donations"] = 0
 tallies["classes"] = 0
+tallies["fundraising"] = 0
 tallies["retail"] = 0
 tallies["unknown"] = 0
 tallies["total"] = 0
@@ -93,6 +94,7 @@ tallies["basic"] = 0
 tallies["basicprorate"] = 0
 tallies["business"] = 0
 tallies["partnership"] = 0
+tallies["standard"] = 0
 tallies["extended"] = 0
 tallies["twenfoursev"] = 0
 tallies["twenfoursevprorate"] = 0
@@ -123,6 +125,7 @@ def print_tallies(month, lastTallies, tallies, arrears, preliminary=False):
         print("(Basic Protated): $" + leftpad(Decimal(tallies["basicprorate"] - lastTallies["basicprorate"]) / 100))
     print("   (Partnership): $" + leftpad(Decimal(tallies["partnership"] - lastTallies["partnership"]) / 100))
     print("      (Business): $" + leftpad(Decimal(tallies["business"] - lastTallies["business"]) / 100))
+    print("      (Standard): $" + leftpad(Decimal(tallies["standard"] - lastTallies["standard"]) / 100))
     print("      (Extended): $" + leftpad(Decimal(tallies["extended"] - lastTallies["extended"]) / 100))
     print("          (24/7): $" + leftpad(Decimal(tallies["twenfoursev"] - lastTallies["twenfoursev"]) / 100))
     if tallies["twenfoursevprorate"] - lastTallies["twenfoursevprorate"] > 0:
@@ -132,6 +135,7 @@ def print_tallies(month, lastTallies, tallies, arrears, preliminary=False):
     print("       Donations: $" + leftpad(Decimal(tallies["donations"] - lastTallies["donations"]) / 100))
     print("         Classes: $" + leftpad(Decimal(tallies["classes"] - lastTallies["classes"]) / 100))
     print("     Misc Retail: $" + leftpad(Decimal(tallies["retail"] - lastTallies["retail"]) / 100))
+    print("     Fundraising: $" + leftpad(Decimal(tallies["fundraising"] - lastTallies["fundraising"]) / 100))
     if tallies["unknown"] - lastTallies["unknown"] > 0:
         print("         Unknown: $" + leftpad(Decimal(tallies["unknown"] - lastTallies["unknown"]) / 100))
     print("           Total: $" + leftpad(Decimal(tallies["total"] - lastTallies["total"]) / 100))
@@ -177,6 +181,8 @@ def nonMembershipCharge (charge):
                 tallies["donations"] += price
             elif id == 1239: # Firing fee
                 tallies["retail"] += price
+            elif id == 5421: # Glow Show Presale
+                tallies["fundraising"] += price
             else:
                 tallies["classes"] += price
         tallies["total"] += amount
@@ -228,10 +234,12 @@ for item in range(len(charges) - 1, -1, -1):
             net = membership - refund
             if membership % 10000 == 0:
                 tallies["twenfoursev"] += net
-            if membership % 7500 == 0 or membership % 6375 == 0:
+            elif membership % 7500 == 0 or membership % 6375 == 0:
                 tallies["extended"] += net
             elif membership % 6500 == 0:
                 tallies["business"] += net
+            elif membership % 5000 == 0 and charge["statement_descriptor"] == "Standard Hours Access":
+                tallies["standard"] += net
             elif membership % 5000 == 0:
                 tallies["partnership"] += net
             elif membership % 3500 == 0:
