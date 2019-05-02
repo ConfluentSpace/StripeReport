@@ -20,7 +20,7 @@ def namefix(name):
 
 customers = stripe.Customer.list(limit=100)
 for customer in customers.auto_paging_iter():
-    customer['description'] = namefix(customer['description'])
+    customer['description'] = namefix(customer['description'] if customer['description'] is not None else customer['name'])
     if customer['delinquent']:
         delinquent.append(customer)
     else:
@@ -56,7 +56,7 @@ print('Delinquent Members:')
 for customer in delinquent:
     plan = ''
     if len(customer['subscriptions']['data']):
-        plan = ' @ ' + customer['subscriptions']['data'][0]['items']['data'][0]['plan']['name']
+        plan = ' @ ' + customer['subscriptions']['data'][0]['items']['data'][0]['plan']['nickname']
     print('  ' + customer['description'] + ' (' + customer['email'] + ')' + plan)
 
 inactive.sort(key=lambda customer: customer['description'])
