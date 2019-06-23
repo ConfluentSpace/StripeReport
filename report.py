@@ -78,26 +78,26 @@ lastTallies = None
 tdate = None
 
 tallies = {}
-tallies["memberships"] = 0
-tallies["donations"] = 0
-tallies["classes"] = 0
-tallies["fundraising"] = 0
-tallies["retail"] = 0
-tallies["unknown"] = 0
-tallies["total"] = 0
-tallies["fees"] = 0
-tallies["refunds"] = 0
+tallies["memberships"] = Decimal(0)
+tallies["donations"] = Decimal(0)
+tallies["classes"] = Decimal(0)
+tallies["fundraising"] = Decimal(0)
+tallies["retail"] = Decimal(0)
+tallies["unknown"] = Decimal(0)
+tallies["total"] = Decimal(0)
+tallies["fees"] = Decimal(0)
+tallies["refunds"] = Decimal(0)
 
-tallies["other"] = 0
-tallies["bold"] = 0
-tallies["basic"] = 0
-tallies["basicprorate"] = 0
-tallies["business"] = 0
-tallies["partnership"] = 0
-tallies["standard"] = 0
-tallies["extended"] = 0
-tallies["twenfoursev"] = 0
-tallies["twenfoursevprorate"] = 0
+tallies["other"] = Decimal(0)
+tallies["bold"] = Decimal(0)
+tallies["basic"] = Decimal(0)
+tallies["basicprorate"] = Decimal(0)
+tallies["business"] = Decimal(0)
+tallies["partnership"] = Decimal(0)
+tallies["standard"] = Decimal(0)
+tallies["extended"] = Decimal(0)
+tallies["twenfoursev"] = Decimal(0)
+tallies["twenfoursevprorate"] = Decimal(0)
 
 arrears = dict()
 
@@ -168,14 +168,14 @@ def nonMembershipCharge (charge):
     if match and int(match.group(1)) in cache:
         entry = cache[int(match.group(1))]
         products = entry["line_items"]
-        amount = charge["amount"]
+        amount = Decimal(charge["amount"])
         if refunded:
             if charge["refunded"]:
-                refund = sum(r["amount"] for r in charge["refunds"]["data"])
+                refund = Decimal(sum(r["amount"] for r in charge["refunds"]["data"]))
             amount = amount - refund
             tallies["refunds"] += refund
         for product in range(0, len(products)):
-            price = products[product]["price"] * products[product]["quantity"] * 100 # it's in $ not cents
+            price = Decimal(products[product]["price"] * products[product]["quantity"] * 100) # it's in $ not cents
             id = products[product]["product_id"]
             if id == 669: # Donation
                 tallies["donations"] += price
@@ -227,10 +227,10 @@ for item in range(len(charges) - 1, -1, -1):
                 del arrears[charge["receipt_email"]][month]
                 if len(arrears[charge["receipt_email"]]) == 0:
                     del arrears[charge["receipt_email"]]
-            membership = charge["amount"]
-            refund = 0
+            membership = Decimal(charge["amount"])
+            refund = Decimal(0)
             if charge["refunded"]:
-                refund = sum(r['amount'] for r in charge['refunds']['data'])
+                refund = Decimal(sum(r['amount'] for r in charge['refunds']['data']))
             net = membership - refund
             if membership % 10000 == 0:
                 tallies["twenfoursev"] += net
