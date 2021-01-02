@@ -23,7 +23,7 @@ preliminary = args.preliminary
 start = datetime.strptime(args.start, "%Y-%m-%d")
 start = date(start.year, start.month, 1)
 
-with open('config.json') as file:    
+with open('config.json') as file:
     keys = json.load(file)
 
 end = args.end
@@ -104,7 +104,7 @@ arrears = dict()
 def leftpad(value):
     length = len(str(math.floor(value)))
     value = str(value)
-    for i in range(0, max(0, 4 - length)):
+    for i in range(0, max(0, 5 - length)):
         value = " " + value
     if value.find(".") == len(value) - 2:
         value += "0"
@@ -131,7 +131,7 @@ def print_tallies(month, lastTallies, tallies, arrears, preliminary=False):
     if tallies["twenfoursevprorate"] - lastTallies["twenfoursevprorate"] > 0:
         print(" (24/7 Prorated): $" + leftpad(Decimal(tallies["twenfoursevprorate"] - lastTallies["twenfoursevprorate"]) / 100))
     if tallies["other"] - lastTallies["other"] > 0:
-        print("       (Unknown): $" + leftpad(Decimal(tallies["other"] - lastTallies["other"]) / 100))
+        print(" (Other/Prorate): $" + leftpad(Decimal(tallies["other"] - lastTallies["other"]) / 100))
     print("       Donations: $" + leftpad(Decimal(tallies["donations"] - lastTallies["donations"]) / 100))
     print("         Classes: $" + leftpad(Decimal(tallies["classes"] - lastTallies["classes"]) / 100))
     print("     Misc Retail: $" + leftpad(Decimal(tallies["retail"] - lastTallies["retail"]) / 100))
@@ -258,7 +258,7 @@ for item in range(len(charges) - 1, -1, -1):
                 tallies["other"] += net
             tallyfee(tallies, Decimal(membership))
             tallies["refunds"] += refund
-            tallies["memberships"] += membership
+            tallies["memberships"] += net
             tallies["total"] += net
     else:
         nonMembershipCharge(charge)
@@ -267,3 +267,8 @@ print_tallies(tdate.strftime("%B"), lastTallies, tallies, arrears, preliminary)
 if not single_month:
     print("")
     print_tallies(smonth + " through " + tdate.strftime("%B"), None, tallies, arrears, preliminary)
+
+print("")
+print("Membership sums and the total for all categories have already subtracted refunds.")
+print("All non-membership line-items do NOT have refunds subtracted.")
+print("Fees are an estimate of the amount paid to Stripe and are not removed from any sums or totals.")
