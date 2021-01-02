@@ -2,7 +2,7 @@ import stripe
 import json
 import re
 
-with open('config.json') as file:    
+with open('config.json') as file:
     keys = json.load(file)
 
 stripe.api_key = keys['stripe']['secret_key']
@@ -27,7 +27,9 @@ for customer in customers.auto_paging_iter():
         if len(customer['subscriptions']['data']):
             plan = customer['subscriptions']['data'][0]['items']['data'][0]['plan']
             name = plan['name'] if 'name' in plan else plan['nickname']
-            if name is None:
+            if name is None and plan['id'] == 'price_1Hq0kUEjABATCXolfUgxa2Jb':
+                name = "Basic Monthly Grandmothered ($25)"
+            elif name is None:
                 print(plan['id'])
             if not name in active:
                 active[name] = []
